@@ -4,6 +4,8 @@ var router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
+//handles the /user/registration endpoint
+//takes ina username and password in the header
 router.post("/register", function (req, res, next) {
   //retrieve email and password from req.body
   const email = req.body.email
@@ -43,10 +45,14 @@ router.post("/register", function (req, res, next) {
       return;
     })
     .catch((error) => {
-
+      res.status(error.status || 500)
+      res.send({ error: true, message: error.message })
     })
 })
 
+//this handles the /user/login endpoint
+//takes in the username and password in the header
+//checks if the user existsin the database
 router.post("/login", function (req, res, next) {
   //retrieve email and password from req.body
   const email = req.body.email

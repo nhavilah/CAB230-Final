@@ -5,6 +5,10 @@ var express = require('express');
 const jwt = require('jsonwebtoken');
 var router = express.Router();
 
+//NOTE: The main error handling for invalid queries, params, etc... is handled here in the controller
+
+//handles the /stocks/symbols endpoint
+//has an option to filter by industry as a query, and as such chooses a different service to retrieve the requested values with
 router.get('/symbols', async (req, res) => {
     let stocks;
     try {
@@ -29,10 +33,11 @@ router.get('/symbols', async (req, res) => {
     }
 })
 
+//used to handle the /stocks/:symbol endpoint
+//request must be capitalised and between 1 and 5 characters long
 router.get('/:symbol', async (req, res) => {
     let stocks;
     try {
-        // Call service class
         if (Object.keys(req.params.symbol).length > 5 || req.params.symbol !== req.params.symbol.toUpperCase()) {
             res.status(400)
             res.send({ error: true, message: "Stock symbol incorrect format - must be 1-5 capital letters" })
@@ -46,7 +51,6 @@ router.get('/:symbol', async (req, res) => {
                 res.send(stocks)
             }
         }
-
     }
     catch (error) {
         res.status(error.status || 500)
@@ -54,15 +58,15 @@ router.get('/:symbol', async (req, res) => {
     }
 })
 
+//handles the authorisation header for the authenticated route
+//checks the validity of the token, which is taken from the header
 const authorize = (req, res, next) => {
     const authorization = req.headers.authorization
-    console.log(authorization);
     let token = null;
 
     //retrieve token
     if (authorization && authorization.split(" ").length === 2) {
         token = authorization.split(" ")[1]
-        console.log(token);
     } else {
         res.status(403)
         res.send({
@@ -76,9 +80,7 @@ const authorize = (req, res, next) => {
     try {
         const secretKey = process.env.SECRET_KEY;
         const decoded = jwt.verify(token, secretKey)
-        console.log(decoded);
         if (decoded.exp < Date.now()) {
-
             res.status(403)
             res.send({
                 error: true,
@@ -88,10 +90,19 @@ const authorize = (req, res, next) => {
         }
         next()
     } catch (e) {
-        console.log("Token is not valid ", e);
+        res.status(403)
+        res.send({
+            error: true,
+            message: "Token is not valid"
+        })
+        return
     }
 }
 
+//used to handle the /stocks/authed/:symbol endpoint
+//can take from and to as queries, and filters the response accordingly
+//unlike the other endpoints, this uses a separate service to handle queries ../services/stocks.authed.service.js
+//symbol must be capitalised and between 1 and 5 characters long
 router.get('/authed/:symbol', authorize, async (req, res) => {
     let stocks;
     try {
